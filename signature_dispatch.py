@@ -36,6 +36,9 @@ Traceback (most recent call last):
 TypeError: f() takes 2 positional arguments but 3 were given
 """
 
+# This is pretty similar to:
+# https://github.com/Lucretiel/Dispatch
+
 import sys, inspect
 from functools import update_wrapper
 

@@ -4,9 +4,9 @@ import sys, re
 
 def pytest_ignore_collect(path, config):
     v = sys.version_info
-    m = re.match(r'python(\d)(\d)', str(path))
+    m = re.search(r'python(\d)(\d)', str(path))
 
     if m:
-        major, minor = m.groups()
-        return major < v.major or minor < v.minor
+        major, minor = map(int, m.groups())
+        return major > v.major or minor > v.minor
 
