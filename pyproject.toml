@@ -40,5 +40,5 @@ addopts = "--doctest-modules --doctest-glob='*.rst'"
 doctest_optionflags = 'NORMALIZE_WHITESPACE'
 
 [tool.semantic_release]
-version_variable = 'signature_dispatch/__init__.py:__version__'
+version_variable = 'signature_dispatch.py:__version__'
 build_command = 'python -m pip install flit && flit build'
