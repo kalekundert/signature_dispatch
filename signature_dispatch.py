@@ -42,7 +42,7 @@ TypeError: f() takes 2 positional arguments but 3 were given
 import sys, inspect
 from functools import update_wrapper
 
-__version__ = '0.0.0'
+__version__ = '0.0.1'
 
 class Decorator:
     __doc__ = __doc__
