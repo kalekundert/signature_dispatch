@@ -46,7 +46,7 @@ candidates:
 import sys, inspect
 from functools import update_wrapper
 
-__version__ = '0.0.1'
+__version__ = '0.1.0'
 
 class Decorator:
     __doc__ = __doc__
