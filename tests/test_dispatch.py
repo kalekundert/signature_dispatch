@@ -104,3 +104,44 @@ def test_docstring():
         return a, b
 
     assert f.__doc__ == "a, b"
+
+def test_error_message():
+    d = signature_dispatch()
+
+    @d
+    def f(a):
+        return a
+    @d
+    def f(a, b):
+        return a, b
+
+    with pytest.raises(TypeError) as err:
+        f()
+
+    assert err.match(r"(?m)can't dispatch the given arguments to any of the candidate functions:")
+    assert err.match(r"(?m)arguments: $")
+    assert err.match(r"(?m)candidates:$")
+    assert err.match(r"(?m)\(a\): missing a required argument: 'a'$")
+    assert err.match(r"(?m)\(a, b\): missing a required argument: 'a'$")
+
+    with pytest.raises(TypeError) as err:
+        f(1, 2, 3)
+
+    assert err.match(r"(?m)can't dispatch the given arguments to any of the candidate functions:")
+    assert err.match(r"(?m)arguments: 1, 2, 3$")
+    assert err.match(r"(?m)candidates:$")
+    assert err.match(r"(?m)\(a\): too many positional arguments$")
+    assert err.match(r"(?m)\(a, b\): too many positional arguments$")
+
+def test_function_raises_type_error():
+    d = signature_dispatch()
+
+    @d
+    def f(a):
+        raise TypeError("my error")
+    @d
+    def f(a):
+        return a
+
+    with pytest.raises(TypeError, match="my error"):
+        f(1)

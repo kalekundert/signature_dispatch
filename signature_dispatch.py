@@ -33,7 +33,11 @@ Examples:
 >>> f(1, 2, 3)
 Traceback (most recent call last):
     ...
-TypeError: f() takes 2 positional arguments but 3 were given
+TypeError: can't dispatch the given arguments to any of the candidate functions:
+arguments: 1, 2, 3
+candidates:
+(x): too many positional arguments
+(x, y): too many positional arguments
 """
 
 # This is pretty similar to:
@@ -65,14 +69,26 @@ class Dispatcher:
 
     def __call__(self, *args, **kwargs):
         assert self.candidates
+        errors = []
 
         for f in self.candidates:
             sig = inspect.signature(f)
             try:
                 sig.bind(*args, **kwargs)
                 break
-            except TypeError:
-                continue
+            except TypeError as err:
+                errors.append(f"{sig}: {err}")
+
+        else:
+            arg_reprs = map(repr, args)
+            kwargs_reprs = (f'{k}={v!r}' for k, v in kwargs.items())
+            arg_repr = ', '.join([*arg_reprs, *kwargs_reprs])
+            raise TypeError("\n".join([
+                "can't dispatch the given arguments to any of the candidate functions:",
+                f"arguments: {arg_repr}",
+                "candidates:",
+                *errors,
+            ]))
 
         return f(*args, **kwargs)
 
