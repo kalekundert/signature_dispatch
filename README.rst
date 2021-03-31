@@ -13,7 +13,7 @@ many functions whose signature matches the set of given arguments.
    :alt: Python version
    :target: https://pypi.python.org/pypi/signature_dispatch
 
-.. image:: 
+.. image::
    https://img.shields.io/github/workflow/status/kalekundert/signature_dispatch/Test%20and%20release/master
    :alt: Test status
    :target: https://github.com/kalekundert/signature_dispatch/actions
@@ -29,12 +29,12 @@ many functions whose signature matches the set of given arguments.
 Installation
 ============
 Install from PyPI::
-  
+
   $ pip install signature_dispatch
 
 Version numbers follow `semantic versioning`__.
 
-__ https://semver.org/ 
+__ https://semver.org/
 
 Usage
 =====
@@ -47,7 +47,7 @@ module itself is directly invoked to create a dispatcher::
   ... def f(x):
   ...    return x
   ...
-  >>> 
+  >>>
   >>> @dispatch
   ... def f(x, y):
   ...    return x, y
@@ -74,4 +74,57 @@ Each decorated function will be replaced by the same callable.  To avoid
 confusion, then, it's best to use the same name for each function.  The 
 docstring of the ultimate callable will be taken from the final decorated 
 function.
+
+Applications
+============
+Writing decorators that can *optionally* be given arguments is tricky to get 
+right, but ``signature_dispatch`` makes it easy.  For example, here is a 
+decorator that prints a message to the terminal every time a function is called 
+and optionally accepts an extra message to print::
+
+  >>> def log(*args, **kwargs):
+  ...     import signature_dispatch
+  ...     from functools import wraps, partial
+  ...
+  ...     dispatch = signature_dispatch()
+  ...
+  ...     @dispatch
+  ...     def decorator(*, msg):
+  ...         return partial(wrap, msg=msg)
+  ...
+  ...     @dispatch
+  ...     def decorator(f):
+  ...         return wrap(f)
+  ...
+  ...     def wrap(f, msg=None):
+  ...
+  ...         @wraps(f)
+  ...         def wrapper(*args, **kwargs):
+  ...             print(f.__name__)
+  ...             if msg: print(msg)
+  ...             f()
+  ...
+  ...         return wrapper
+  ...
+  ...     return decorator(*args, **kwargs)
+
+Using ``@log`` without an argument::
+
+  >>> @log
+  ... def foo():
+  ...     pass
+  >>> foo()
+  foo
+
+Using ``@log`` with an argument::
+
+  >>> @log(msg="Hello world!")
+  ... def bar():
+  ...     pass
+  >>> bar()
+  bar
+  Hello world!
+
+
+
 
