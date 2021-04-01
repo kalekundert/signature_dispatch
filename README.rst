@@ -102,7 +102,7 @@ and optionally accepts an extra message to print::
   ...         def wrapper(*args, **kwargs):
   ...             print(f.__name__)
   ...             if msg: print(msg)
-  ...             f()
+  ...             return f()
   ...
   ...         return wrapper
   ...
@@ -124,7 +124,4 @@ Using ``@log`` with an argument::
   >>> bar()
   bar
   Hello world!
-
-
-
 
