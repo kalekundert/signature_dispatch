@@ -45,6 +45,8 @@ candidates:
 
 import sys, inspect
 from functools import update_wrapper
+from typeguard import check_type
+from typing import Dict, Tuple
 
 __version__ = '0.1.0'
 
@@ -74,10 +76,18 @@ class Dispatcher:
         for f in self.candidates:
             sig = inspect.signature(f)
             try:
-                sig.bind(*args, **kwargs)
-                break
+                bound_args = sig.bind(*args, **kwargs)
             except TypeError as err:
                 errors.append(f"{sig}: {err}")
+                continue
+
+            try:
+                check_type_annotations(bound_args)
+            except TypeError as err:
+                errors.append(f"{sig}: {err}")
+                continue
+
+            break
 
         else:
             arg_reprs = map(repr, args)
@@ -92,7 +102,20 @@ class Dispatcher:
 
         return f(*args, **kwargs)
 
+def check_type_annotations(bound_args):
+    for name, value in bound_args.arguments.items():
+        param = bound_args.signature.parameters[name]
+        if param.annotation is param.empty:
+            continue
 
+        if param.kind is param.VAR_POSITIONAL:
+            expected_type = Tuple[param.annotation, ...]
+        elif param.kind is param.VAR_KEYWORD:
+            expected_type = Dict[str, param.annotation]
+        else:
+            expected_type = param.annotation
+
+        check_type(name, value, expected_type)
 
 
 # Hack to make the module directly usable as a decorator.  Only works for 

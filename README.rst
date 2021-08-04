@@ -2,8 +2,8 @@
 Signature Dispatch
 ******************
 
-``signature_dispatch`` is a simple python utility for executing the first of 
-many functions whose signature matches the set of given arguments.
+``signature_dispatch`` is a simple python library for overloading functions 
+based on their call signature and type annotations.
 
 .. image:: https://img.shields.io/pypi/v/signature_dispatch.svg
    :alt: Last release
@@ -47,15 +47,14 @@ module itself is directly invoked to create a dispatcher::
   ... def f(x):
   ...    return x
   ...
-  >>>
   >>> @dispatch
   ... def f(x, y):
   ...    return x, y
   ...
 
 When called, all of the decorated functions will be tested in order to see if 
-they accept the given arguments.  The first one that does will be invoked.  A 
-TypeError will be raised if none of the functions can accept the arguments::
+they match the given arguments.  The first one that does will be invoked.  A 
+``TypeError`` will be raised if no matches are found::
 
   >>> f(1)
   1
@@ -69,6 +68,43 @@ TypeError will be raised if none of the functions can accept the arguments::
   candidates:
   (x): too many positional arguments
   (x, y): too many positional arguments
+
+Type annotations are taken into account when choosing which function to 
+invoke::
+
+  >>> from typing import List
+  >>> dispatch = signature_dispatch()
+  >>> @dispatch
+  ... def g(x: int):
+  ...    return 'int', x
+  ...
+  >>> @dispatch
+  ... def f(x: List[int]):
+  ...    return 'list', x
+  ...
+
+::
+
+  >>> g(1)
+  ('int', 1)
+  >>> g([1, 2])
+  ('list', [1, 2])
+  >>> g('a')
+  Traceback (most recent call last):
+      ...
+  TypeError: can't dispatch the given arguments to any of the candidate functions:
+  arguments: 'a'
+  candidates:
+  (x: int): type of x must be int; got str instead
+  (x: List[int]): type of x must be a list; got str instead
+  >>> g(['a'])
+  Traceback (most recent call last):
+      ...
+  TypeError: can't dispatch the given arguments to any of the candidate functions:
+  arguments: ['a']
+  candidates:
+  (x: int): type of x must be int; got list instead
+  (x: List[int]): type of x[0] must be int; got str instead
 
 Each decorated function will be replaced by the same callable.  To avoid 
 confusion, then, it's best to use the same name for each function.  The 
@@ -125,3 +161,13 @@ Using ``@log`` with an argument::
   bar
   Hello world!
 
+Alternatives
+============
+The dispatching_ library does almost the same thing as this one, with a few 
+small differences:
+
+- The API is slightly more verbose.
+- Subscripted generic types (e.g. ``List[int]``) are not supported.
+- Annotations can be arbitrary functions.
+
+.. _dispatching: https://github.com/Lucretiel/Dispatch
