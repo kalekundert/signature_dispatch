@@ -48,7 +48,7 @@ from functools import update_wrapper
 from typeguard import check_type
 from typing import Dict, Tuple
 
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 
 class Decorator:
     __doc__ = __doc__
