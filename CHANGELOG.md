@@ -2,6 +2,17 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.0 (2021-09-15)
+### Feature
+* Check functions in order of priority ([`0662d84`](https://github.com/kalekundert/signature_dispatch/commit/0662d842a70f5765cb62862b410f4c494903fb08))
+* Infer implementations from local names ([`7648b1e`](https://github.com/kalekundert/signature_dispatch/commit/7648b1ebb24165df42b15055a6760f8165f2747c))
+
+### Fix
+* Allow methods to be dispatched ([`e179b6b`](https://github.com/kalekundert/signature_dispatch/commit/e179b6b2a5a830205c705f8b5874da8dff3c1b15))
+
+### Breaking
+* It is no longer possible to create explicit dispatcher objects.  ([`7648b1e`](https://github.com/kalekundert/signature_dispatch/commit/7648b1ebb24165df42b15055a6760f8165f2747c))
+
 ## v0.2.0 (2021-08-04)
 ### Feature
 * Dispatch based on type annotations ([`37dac39`](https://github.com/kalekundert/signature_dispatch/commit/37dac39a44e301ac8c2cb8209822af4c338c85e6))
