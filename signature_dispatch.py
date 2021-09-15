@@ -40,12 +40,67 @@ from typing import Dict, Tuple
 
 __version__ = '0.2.0'
 
-def _auto_dispatch(f, stack_depth=1):
-    caller = inspect.stack()[stack_depth]
+def dispatch(candidates, args, kwargs):
+    """
+    Search the given list of candidate functions for the first one that can 
+    accept the given arguments, then execute that function.
+
+    The caller must guarantee that at least one candidate function is provided.
+    """
+    assert candidates
+    errors = []
+
+    for f in candidates:
+        sig = inspect.signature(f)
+        try:
+            bound_args = sig.bind(*args, **kwargs)
+        except TypeError as err:
+            errors.append(f"{sig}: {err}")
+            continue
+
+        try:
+            _check_type_annotations(bound_args)
+        except TypeError as err:
+            errors.append(f"{sig}: {err}")
+            continue
+
+        break
+
+    else:
+        arg_reprs = map(repr, args)
+        kwargs_reprs = (f'{k}={v!r}' for k, v in kwargs.items())
+        arg_repr = ', '.join([*arg_reprs, *kwargs_reprs])
+        raise TypeError("\n".join([
+            "can't dispatch the given arguments to any of the candidate functions:",
+            f"arguments: {arg_repr}",
+            "candidates:",
+            *errors,
+        ]))
+
+    return f(*args, **kwargs)
+
+
+def _overload_via_local_name(f, priority, stack_depth):
+
+    # Try to avoid using `inspect.stack()`: generating the whole stack is 
+    # expensive.  I noticed that it increased the runtime of the autoprop test 
+    # suite from ≈4s to ≈30s (although I was also building the dispatcher on 
+    # each invocation, which is very wasteful).
+    #
+    # Some implementations of python don't support `inspect.currentframe()`, so 
+    # in those cases I have to fall back on `inspect.stack()`.
+
+    frame = inspect.currentframe()
+
+    if frame is None:
+        frame = inspect.stack()[stack_depth + 1].frame
+    else:
+        for i in range(stack_depth + 1):
+            frame = frame.f_back
 
     try:
         name = f.__name__
-        locals = caller.frame.f_locals
+        locals = frame.f_locals
 
         if name in locals:
             dispatcher = locals[name]
@@ -54,10 +109,10 @@ def _auto_dispatch(f, stack_depth=1):
         else:
             dispatcher = _make_dispatcher()
 
-        return dispatcher.overload(f)
+        return dispatcher.overload(priority=priority)(f)
 
     finally:
-        del caller
+        del frame
 
 def _make_dispatcher():
     # The dispatcher needs to be a real function (e.g. not a class with a 
@@ -65,43 +120,35 @@ def _make_dispatcher():
     candidates = []
 
     def dispatcher(*args, **kwargs):
-        assert candidates
-        errors = []
+        return dispatch(candidates, args, kwargs)
 
-        for f in candidates:
-            sig = inspect.signature(f)
-            try:
-                bound_args = sig.bind(*args, **kwargs)
-            except TypeError as err:
-                errors.append(f"{sig}: {err}")
-                continue
+    # This next bit of code is a bit self-referential.  We want to use the 
+    # signature-dispatching functionality provided by this module (because we 
+    # want to support an optional `priority` argument), but we have to avoid 
+    # using any of the convenient decorators provided by this module (because 
+    # we're in the middle of implementing them).  So we use the `dispatch()` 
+    # function directly.
 
-            try:
-                _check_type_annotations(bound_args)
-            except TypeError as err:
-                errors.append(f"{sig}: {err}")
-                continue
+    def overload_with_priority(*, priority):
+        def decorator(f):
+            if not candidates:
+                update_wrapper(dispatcher, f)
 
-            break
+            f.priority = priority
+            candidates.append(f)
+            candidates.sort(key=lambda f: f.priority, reverse=True)
 
-        else:
-            arg_reprs = map(repr, args)
-            kwargs_reprs = (f'{k}={v!r}' for k, v in kwargs.items())
-            arg_repr = ', '.join([*arg_reprs, *kwargs_reprs])
-            raise TypeError("\n".join([
-                "can't dispatch the given arguments to any of the candidate functions:",
-                f"arguments: {arg_repr}",
-                "candidates:",
-                *errors,
-            ]))
+            return dispatcher
+        return decorator
 
-        return f(*args, **kwargs)
+    def overload_without_priority(f):
+        return overload_with_priority(priority=0)(f)
 
-    def overload(f):
-        if not candidates:
-            update_wrapper(dispatcher, f)
-        candidates.append(f)
-        return dispatcher
+    def overload(*args, **kwargs):
+        return dispatch(
+                [overload_with_priority, overload_without_priority],
+                args, kwargs,
+        )
 
     dispatcher.overload = overload
     return dispatcher
@@ -128,8 +175,17 @@ def _check_type_annotations(bound_args):
 
 class CallableModule(sys.modules[__name__].__class__):
 
-    def __call__(self, f):
-        return _auto_dispatch(f, stack_depth=2)
+    def __call__(self, *args, **kwargs):
+
+        def with_priority(*, priority):
+            def decorator(f):
+                return _overload_via_local_name(f, priority, stack_depth=1)
+            return decorator
+
+        def without_priority(f):
+            return _overload_via_local_name(f, 0, stack_depth=3)
+
+        return dispatch([with_priority, without_priority], args, kwargs)
 
 sys.modules[__name__].__class__ = CallableModule
 

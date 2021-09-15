@@ -1,15 +1,24 @@
 #!/usr/bin/env python3
 
-import signature_dispatch, pytest
+import signature_dispatch as sd, pytest
 from typing import List, Callable
+
+@pytest.fixture(autouse=True, params=[False, True])
+def currentframe(request, monkeypatch):
+    # Not all python implementations support `inspect.currentframe()`, so run 
+    # every test with and without it.
+    if request.param:
+        import inspect
+        monkeypatch.setattr(inspect, 'currentframe', lambda: None)
+
 
 def test_positional_or_keyword():
 
-    @signature_dispatch
+    @sd
     def f(a):
         return a
 
-    @signature_dispatch
+    @sd
     def f(a, b):
         return a, b
 
@@ -27,11 +36,11 @@ def test_positional_or_keyword():
 
 def test_var_positional():
 
-    @signature_dispatch
+    @sd
     def f(*a):
         return a
 
-    @signature_dispatch
+    @sd
     def f(*a, b):
         return a, b
 
@@ -48,11 +57,11 @@ def test_var_positional():
 
 def test_keyword_only():
 
-    @signature_dispatch
+    @sd
     def f(*, a):
         return a
 
-    @signature_dispatch
+    @sd
     def f(*, a, b):
         return a, b
 
@@ -68,11 +77,11 @@ def test_keyword_only():
 
 def test_var_keyword():
 
-    @signature_dispatch
+    @sd
     def f(**kwargs):
         return kwargs
 
-    @signature_dispatch
+    @sd
     def f(a, **kwargs):
         return a, kwargs
 
@@ -93,19 +102,19 @@ def test_var_keyword():
 
 def test_annotation():
 
-    @signature_dispatch
+    @sd
     def f(a: int):
         return 'int', a
 
-    @signature_dispatch
+    @sd
     def f(a: str):
         return 'str', a
 
-    @signature_dispatch
+    @sd
     def f(a: List[int]):
         return 'List[int]', a
 
-    @signature_dispatch
+    @sd
     def f(a: Callable):
         return 'Callable', a
 
@@ -124,11 +133,11 @@ def test_annotation():
 
 def test_annotation_default():
 
-    @signature_dispatch
+    @sd
     def f(a: int=0):
         return 'int', a
 
-    @signature_dispatch
+    @sd
     def f(a: str):
         return 'str', a
 
@@ -138,11 +147,11 @@ def test_annotation_default():
 
 def test_annotation_var_positional():
 
-    @signature_dispatch
+    @sd
     def f(*a: int):
         return 'int', a
 
-    @signature_dispatch
+    @sd
     def f(*a: str):
         return 'str', a
 
@@ -154,11 +163,11 @@ def test_annotation_var_positional():
 
 def test_annotation_var_keyword():
 
-    @signature_dispatch
+    @sd
     def f(**a: int):
         return 'int', a
 
-    @signature_dispatch
+    @sd
     def f(**a: str):
         return 'str', a
 
@@ -172,11 +181,11 @@ def test_method():
 
     class C:
 
-        @signature_dispatch
+        @sd
         def m(self, a):
             return a
 
-        @signature_dispatch
+        @sd
         def m(self, a, b):
             return a, b
 
@@ -194,11 +203,11 @@ def test_classmethod():
 
     class C:
 
-        @signature_dispatch
+        @sd
         def m(cls, a):
             return cls, a
 
-        @signature_dispatch
+        @sd
         def m(cls, a, b):
             return cls, a, b
 
@@ -214,9 +223,37 @@ def test_classmethod():
     with pytest.raises(TypeError):
         obj.m(1, 2, 3)
 
+@pytest.mark.parametrize(
+        'deco_a,deco_b,expected', [
+            (sd,              sd,              'a'),
+
+            (sd(priority=1),  sd,              'a'),
+            (sd,              sd(priority=1),  'b'),
+            (sd(priority=1),  sd(priority=1),  'a'),
+
+            (sd(priority=-1), sd,              'b'),
+            (sd,              sd(priority=-1), 'a'),
+            (sd(priority=-1), sd(priority=-1), 'a'),
+
+            (sd(priority=1),  sd(priority=-1), 'a'),
+            (sd(priority=-1), sd(priority=1),  'b'),
+        ],
+)
+def test_priority(deco_a, deco_b, expected):
+
+    @deco_a
+    def f():
+        return 'a'
+
+    @deco_b
+    def f():
+        return 'b'
+
+    assert f() == expected
+
 def test_overload():
 
-    @signature_dispatch
+    @sd
     def f(a):
         return a
 
@@ -232,14 +269,33 @@ def test_overload():
     with pytest.raises(TypeError):
         f(1, 2, 3)
 
+@pytest.mark.parametrize(
+        'priority, expected', [
+            (-1, 'a'),
+            (0, 'a'),
+            (1, 'b'),
+        ],
+)
+def test_overload_priority(priority, expected):
+
+    @sd
+    def f():
+        return 'a'
+
+    @f.overload(priority=priority)
+    def _():
+        return 'b'
+
+    assert f() == expected
+
 def test_docstring():
 
-    @signature_dispatch
+    @sd
     def f(a):
         "a"
         return a
 
-    @signature_dispatch
+    @sd
     def f(a, b):
         "a, b"
         return a, b
@@ -248,11 +304,11 @@ def test_docstring():
 
 def test_error_message():
 
-    @signature_dispatch
+    @sd
     def f(a):
         return a
 
-    @signature_dispatch
+    @sd
     def f(a, b):
         return a, b
 
@@ -276,11 +332,11 @@ def test_error_message():
 
 def test_error_message_annotation():
 
-    @signature_dispatch
+    @sd
     def f(a: int):
         return a
 
-    @signature_dispatch
+    @sd
     def f(a: List[int]):
         return a
 
@@ -304,11 +360,11 @@ def test_error_message_annotation():
 
 def test_function_raises_type_error():
 
-    @signature_dispatch
+    @sd
     def f(a):
         raise TypeError("my error")
 
-    @signature_dispatch
+    @sd
     def f(a):
         return a
 
@@ -318,11 +374,11 @@ def test_function_raises_type_error():
 def test_ignore_local_variables_with_same_name():
     f = None
 
-    @signature_dispatch
+    @sd
     def f(a):
         return a
 
-    @signature_dispatch
+    @sd
     def f(a, b):
         return a, b
 

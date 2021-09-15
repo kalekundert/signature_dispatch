@@ -43,25 +43,25 @@ the same name::
 
   >>> import signature_dispatch
   >>> @signature_dispatch
-  ... def f(x):
+  ... def f1(x):
   ...    return x
   ...
   >>> @signature_dispatch
-  ... def f(x, y):
+  ... def f1(x, y):
   ...    return x, y
   ...
 
 When called, all of the decorated functions will be tested in order to see if 
 they match the given arguments.  The first one that does will be invoked::
 
-  >>> f(1)
+  >>> f1(1)
   1
-  >>> f(1, 2)
+  >>> f1(1, 2)
   (1, 2)
 
 A ``TypeError`` will be raised if no matches are found::
 
-  >>> f(1, 2, 3)
+  >>> f1(1, 2, 3)
   Traceback (most recent call last):
       ...
   TypeError: can't dispatch the given arguments to any of the candidate functions:
@@ -75,21 +75,21 @@ invoke::
 
   >>> from typing import List
   >>> @signature_dispatch
-  ... def g(x: int):
+  ... def f2(x: int):
   ...    return 'int', x
   ...
   >>> @signature_dispatch
-  ... def g(x: List[int]):
+  ... def f2(x: List[int]):
   ...    return 'list', x
   ...
 
 ::
 
-  >>> g(1)
+  >>> f2(1)
   ('int', 1)
-  >>> g([1, 2])
+  >>> f2([1, 2])
   ('list', [1, 2])
-  >>> g('a')
+  >>> f2('a')
   Traceback (most recent call last):
       ...
   TypeError: can't dispatch the given arguments to any of the candidate functions:
@@ -97,7 +97,7 @@ invoke::
   candidates:
   (x: int): type of x must be int; got str instead
   (x: List[int]): type of x must be a list; got str instead
-  >>> g(['a'])
+  >>> f2(['a'])
   Traceback (most recent call last):
       ...
   TypeError: can't dispatch the given arguments to any of the candidate functions:
@@ -108,25 +108,42 @@ invoke::
 
 Details
 =======
-- When using the module directly as a decorator, every implementation of the 
-  function must have the same name and be defined in the same local scope.  If 
-  this is not possible (e.g. the implementations are in different modules), 
-  every function decorated with ``@signature_dispatch`` provides an 
-  ``overload()`` method that can be used to add implementations defined 
-  elsewhere::
+- When using the module directly as a decorator, every decorated function must 
+  have the same name and must be defined in the same local scope.  If this is 
+  not possible (e.g. the implementations are in different modules), every 
+  function decorated with ``@signature_dispatch`` provides an ``overload()`` 
+  method that can be used to add implementations defined elsewhere::
 
     >>> @signature_dispatch
-    ... def h(x):
+    ... def f3(x):
     ...    return x
     ...
-    >>> @h.overload
+    >>> @f3.overload
     ... def _(x, y):
     ...    return x, y
     ...
-    >>> h(1)
+    >>> f3(1)
     1
-    >>> h(1, 2)
+    >>> f3(1, 2)
     (1, 2)
+
+- By default, the decorated functions are tried in the order they were defined.  
+  If for some reason this order is undesirable, both ``@signature_dispatch`` 
+  and ``@*.overload`` accept an optional numeric *priority* argument that can 
+  be used to specify a custom order.  Functions with higher priorities will be 
+  tried before those with lower priorities.  Functions with the same priority 
+  will be tried in the order they were defined.  The default priority is 0::
+
+    >>> @signature_dispatch
+    ... def f4():
+    ...     return 'first'
+    ...
+    >>> @signature_dispatch(priority=1)
+    ... def f4():
+    ...     return 'second'
+    ...
+    >>> f4()
+    'second'
 
 - The docstring will be taken from the first decorated function.  All other 
   docstrings will be ignored.
@@ -157,6 +174,29 @@ Details
   special-case class/static methods so that you could just apply both 
   decorators to all the same functions, but that could be complicated and this 
   work-around seems fine for now.
+
+- Calling `@signature_dispatch` may be more expensive than you think, because 
+  it has to find the scope that it was called from.  This is fast enough that 
+  it shouldn't matter in most practical settings, but it does mean that you 
+  should take care to not write your code in such a way that, e.g., the 
+  `@signature_dispatch` decorator is called every time the function is invoked.  
+  Instead, decorate your functions once and then call the resulting function as 
+  often as you'd like.
+
+- You can get direct access to the core dispatching functionality provided by 
+  this library via the `signature_dispatch.dispatch()` function.  This will 
+  allow you to call one of several functions based on a given set of arguments, 
+  without the need to use any decorators::
+
+    >>> import signature_dispatch
+    >>> candidates = [
+    ...         lambda x: x,
+    ...         lambda x, y: (x, y),
+    ... ]
+    >>> signature_dispatch.dispatch(candidates, args=(1,), kwargs={})
+    1
+    >>> signature_dispatch.dispatch(candidates, args=(1, 2), kwargs={})
+    (1, 2)
 
 Applications
 ============
