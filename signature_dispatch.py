@@ -54,26 +54,22 @@ class Decorator:
     __doc__ = __doc__
 
     def __init__(self):
-        self.dispatcher = Dispatcher()
+        self.dispatcher = _make_dispatcher()
 
     def __call__(self, f):
-        self.dispatcher += f
+        self.dispatcher.candidates.append(f)
         return update_wrapper(self.dispatcher, f)
 
-class Dispatcher:
+def _make_dispatcher():
+    # The dispatcher needs to be a real function (e.g. not a class with a 
+    # `__call__()` method) so that it will be bound when used on methods.
+    candidates = []
 
-    def __init__(self):
-        self.candidates = []
-
-    def __iadd__(self, f):
-        self.candidates.append(f)
-        return self
-
-    def __call__(self, *args, **kwargs):
-        assert self.candidates
+    def dispatcher(*args, **kwargs):
+        assert candidates
         errors = []
 
-        for f in self.candidates:
+        for f in candidates:
             sig = inspect.signature(f)
             try:
                 bound_args = sig.bind(*args, **kwargs)
@@ -82,7 +78,7 @@ class Dispatcher:
                 continue
 
             try:
-                check_type_annotations(bound_args)
+                _check_type_annotations(bound_args)
             except TypeError as err:
                 errors.append(f"{sig}: {err}")
                 continue
@@ -102,7 +98,10 @@ class Dispatcher:
 
         return f(*args, **kwargs)
 
-def check_type_annotations(bound_args):
+    dispatcher.candidates = candidates
+    return dispatcher
+
+def _check_type_annotations(bound_args):
     for name, value in bound_args.arguments.items():
         param = bound_args.signature.parameters[name]
         if param.annotation is param.empty:

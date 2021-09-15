@@ -166,6 +166,31 @@ def test_annotation_var_keyword():
     assert f(a='a') == ('str', {'a': 'a'})
     assert f(a='a', b='b') == ('str', {'a': 'a', 'b': 'b'})
 
+def test_method():
+
+    class MockObj:
+
+        d = signature_dispatch()
+
+        @d
+        def m(self, a):
+            return a
+
+        @d
+        def m(self, a, b):
+            return a, b
+
+    obj = MockObj()
+
+    assert obj.m(1) == 1
+    assert obj.m(1, 2) == (1, 2)
+
+    with pytest.raises(TypeError):
+        obj.m()
+    with pytest.raises(TypeError):
+        obj.m(1, 2, 3)
+
+
 def test_docstring():
     d = signature_dispatch()
 
