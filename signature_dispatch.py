@@ -3,26 +3,19 @@
 """
 Execute the first function that matches the given arguments.
 
-Use this object to decorate multiple functions.  When called, all of the 
-decorated functions will be tested in order to see if they accept the given 
-arguments.  The first one that does will be invoked.  A TypeError will be 
-raised if none of the functions can accept the arguments.
-
-Each decorated function will be replaced by the same callable.  To avoid 
-confusion, then, it's best to use the same name for each function.  The 
-docstring of the ultimate callable will be taken from the final decorated 
-function.
+Use this module to decorate multiple functions of the same name.  When called, 
+all of the decorated functions will be tested in order to see if they accept 
+the given arguments.  The first one that does will be invoked.  A TypeError 
+will be raised if none of the functions can accept the arguments.
 
 Examples:
 
 >>> import signature_dispatch
->>> dispatch = signature_dispatch()
->>> @dispatch
+>>> @signature_dispatch
 ... def f(x):
 ...    return x
 ...
->>> 
->>> @dispatch
+>>> @signature_dispatch
 ... def f(x, y):
 ...    return x, y
 ...
@@ -40,9 +33,6 @@ candidates:
 (x, y): too many positional arguments
 """
 
-# This is pretty similar to:
-# https://github.com/Lucretiel/Dispatch
-
 import sys, inspect
 from functools import update_wrapper
 from typeguard import check_type
@@ -50,15 +40,24 @@ from typing import Dict, Tuple
 
 __version__ = '0.2.0'
 
-class Decorator:
-    __doc__ = __doc__
+def _auto_dispatch(f, stack_depth=1):
+    caller = inspect.stack()[stack_depth]
 
-    def __init__(self):
-        self.dispatcher = _make_dispatcher()
+    try:
+        name = f.__name__
+        locals = caller.frame.f_locals
 
-    def __call__(self, f):
-        self.dispatcher.candidates.append(f)
-        return update_wrapper(self.dispatcher, f)
+        if name in locals:
+            dispatcher = locals[name]
+            if not hasattr(dispatcher, 'overload'):
+                dispatcher = _make_dispatcher()
+        else:
+            dispatcher = _make_dispatcher()
+
+        return dispatcher.overload(f)
+
+    finally:
+        del caller
 
 def _make_dispatcher():
     # The dispatcher needs to be a real function (e.g. not a class with a 
@@ -98,7 +97,13 @@ def _make_dispatcher():
 
         return f(*args, **kwargs)
 
-    dispatcher.candidates = candidates
+    def overload(f):
+        if not candidates:
+            update_wrapper(dispatcher, f)
+        candidates.append(f)
+        return dispatcher
+
+    dispatcher.overload = overload
     return dispatcher
 
 def _check_type_annotations(bound_args):
@@ -123,8 +128,8 @@ def _check_type_annotations(bound_args):
 
 class CallableModule(sys.modules[__name__].__class__):
 
-    def __call__(self):
-        return Decorator()
+    def __call__(self, f):
+        return _auto_dispatch(f, stack_depth=2)
 
 sys.modules[__name__].__class__ = CallableModule
 

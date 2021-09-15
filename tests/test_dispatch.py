@@ -4,12 +4,12 @@ import signature_dispatch, pytest
 from typing import List, Callable
 
 def test_positional_or_keyword():
-    d = signature_dispatch()
 
-    @d
+    @signature_dispatch
     def f(a):
         return a
-    @d
+
+    @signature_dispatch
     def f(a, b):
         return a, b
 
@@ -26,12 +26,12 @@ def test_positional_or_keyword():
         f(1, 2, 3)
 
 def test_var_positional():
-    d = signature_dispatch()
 
-    @d
+    @signature_dispatch
     def f(*a):
         return a
-    @d
+
+    @signature_dispatch
     def f(*a, b):
         return a, b
 
@@ -47,12 +47,12 @@ def test_var_positional():
         f(c=1)
 
 def test_keyword_only():
-    d = signature_dispatch()
 
-    @d
+    @signature_dispatch
     def f(*, a):
         return a
-    @d
+
+    @signature_dispatch
     def f(*, a, b):
         return a, b
 
@@ -67,12 +67,12 @@ def test_keyword_only():
         f(b=1)
 
 def test_var_keyword():
-    d = signature_dispatch()
 
-    @d
+    @signature_dispatch
     def f(**kwargs):
         return kwargs
-    @d
+
+    @signature_dispatch
     def f(a, **kwargs):
         return a, kwargs
 
@@ -92,18 +92,20 @@ def test_var_keyword():
         f(1, a=2)  # `a` specified twice
 
 def test_annotation():
-    d = signature_dispatch()
 
-    @d
+    @signature_dispatch
     def f(a: int):
         return 'int', a
-    @d
+
+    @signature_dispatch
     def f(a: str):
         return 'str', a
-    @d
+
+    @signature_dispatch
     def f(a: List[int]):
         return 'List[int]', a
-    @d
+
+    @signature_dispatch
     def f(a: Callable):
         return 'Callable', a
 
@@ -121,12 +123,12 @@ def test_annotation():
         f(['a'])
 
 def test_annotation_default():
-    d = signature_dispatch()
 
-    @d
+    @signature_dispatch
     def f(a: int=0):
         return 'int', a
-    @d
+
+    @signature_dispatch
     def f(a: str):
         return 'str', a
 
@@ -135,12 +137,12 @@ def test_annotation_default():
     assert f('a') == ('str', 'a')
 
 def test_annotation_var_positional():
-    d = signature_dispatch()
 
-    @d
+    @signature_dispatch
     def f(*a: int):
         return 'int', a
-    @d
+
+    @signature_dispatch
     def f(*a: str):
         return 'str', a
 
@@ -151,12 +153,12 @@ def test_annotation_var_positional():
     assert f('a', 'b') == ('str', ('a', 'b'))
 
 def test_annotation_var_keyword():
-    d = signature_dispatch()
 
-    @d
+    @signature_dispatch
     def f(**a: int):
         return 'int', a
-    @d
+
+    @signature_dispatch
     def f(**a: str):
         return 'str', a
 
@@ -168,19 +170,17 @@ def test_annotation_var_keyword():
 
 def test_method():
 
-    class MockObj:
+    class C:
 
-        d = signature_dispatch()
-
-        @d
+        @signature_dispatch
         def m(self, a):
             return a
 
-        @d
+        @signature_dispatch
         def m(self, a, b):
             return a, b
 
-    obj = MockObj()
+    obj = C()
 
     assert obj.m(1) == 1
     assert obj.m(1, 2) == (1, 2)
@@ -190,28 +190,69 @@ def test_method():
     with pytest.raises(TypeError):
         obj.m(1, 2, 3)
 
+def test_classmethod():
+
+    class C:
+
+        @signature_dispatch
+        def m(cls, a):
+            return cls, a
+
+        @signature_dispatch
+        def m(cls, a, b):
+            return cls, a, b
+
+        m = classmethod(m)
+
+    obj = C()
+
+    assert obj.m(1) == (C, 1)
+    assert obj.m(1, 2) == (C, 1, 2)
+
+    with pytest.raises(TypeError):
+        obj.m()
+    with pytest.raises(TypeError):
+        obj.m(1, 2, 3)
+
+def test_overload():
+
+    @signature_dispatch
+    def f(a):
+        return a
+
+    @f.overload
+    def _(a, b):
+        return a, b
+
+    assert f(1) == 1
+    assert f(1, 2) == (1, 2)
+
+    with pytest.raises(TypeError):
+        f()
+    with pytest.raises(TypeError):
+        f(1, 2, 3)
 
 def test_docstring():
-    d = signature_dispatch()
 
-    @d
+    @signature_dispatch
     def f(a):
         "a"
         return a
-    @d
+
+    @signature_dispatch
     def f(a, b):
         "a, b"
         return a, b
 
-    assert f.__doc__ == "a, b"
+    assert f.__doc__ == "a"
 
 def test_error_message():
-    d = signature_dispatch()
 
-    @d
+    @signature_dispatch
     def f(a):
         return a
-    @d
+
+    @signature_dispatch
     def f(a, b):
         return a, b
 
@@ -234,12 +275,12 @@ def test_error_message():
     assert err.match(r"(?m)\(a, b\): too many positional arguments$")
 
 def test_error_message_annotation():
-    d = signature_dispatch()
 
-    @d
+    @signature_dispatch
     def f(a: int):
         return a
-    @d
+
+    @signature_dispatch
     def f(a: List[int]):
         return a
 
@@ -262,14 +303,34 @@ def test_error_message_annotation():
     assert err.match(r"(?m)\(a: ?List\[int\]\): type of a\[0\] must be int; got str instead$")
 
 def test_function_raises_type_error():
-    d = signature_dispatch()
 
-    @d
+    @signature_dispatch
     def f(a):
         raise TypeError("my error")
-    @d
+
+    @signature_dispatch
     def f(a):
         return a
 
     with pytest.raises(TypeError, match="my error"):
         f(1)
+
+def test_ignore_local_variables_with_same_name():
+    f = None
+
+    @signature_dispatch
+    def f(a):
+        return a
+
+    @signature_dispatch
+    def f(a, b):
+        return a, b
+
+    assert f(1) == 1
+    assert f(1, 2) == (1, 2)
+
+    with pytest.raises(TypeError):
+        f()
+    with pytest.raises(TypeError):
+        f(1, 2, 3)
+

@@ -38,28 +38,29 @@ __ https://semver.org/
 
 Usage
 =====
-Create a dispatcher and use it to decorate multiple functions.  Note that the 
-module itself is directly invoked to create a dispatcher::
+Use the module itself to decorate multiple functions (or methods) that all have 
+the same name::
 
   >>> import signature_dispatch
-  >>> dispatch = signature_dispatch()
-  >>> @dispatch
+  >>> @signature_dispatch
   ... def f(x):
   ...    return x
   ...
-  >>> @dispatch
+  >>> @signature_dispatch
   ... def f(x, y):
   ...    return x, y
   ...
 
 When called, all of the decorated functions will be tested in order to see if 
-they match the given arguments.  The first one that does will be invoked.  A 
-``TypeError`` will be raised if no matches are found::
+they match the given arguments.  The first one that does will be invoked::
 
   >>> f(1)
   1
   >>> f(1, 2)
   (1, 2)
+
+A ``TypeError`` will be raised if no matches are found::
+
   >>> f(1, 2, 3)
   Traceback (most recent call last):
       ...
@@ -73,13 +74,12 @@ Type annotations are taken into account when choosing which function to
 invoke::
 
   >>> from typing import List
-  >>> dispatch = signature_dispatch()
-  >>> @dispatch
+  >>> @signature_dispatch
   ... def g(x: int):
   ...    return 'int', x
   ...
-  >>> @dispatch
-  ... def f(x: List[int]):
+  >>> @signature_dispatch
+  ... def g(x: List[int]):
   ...    return 'list', x
   ...
 
@@ -106,43 +106,84 @@ invoke::
   (x: int): type of x must be int; got list instead
   (x: List[int]): type of x[0] must be int; got str instead
 
-Each decorated function will be replaced by the same callable.  To avoid 
-confusion, then, it's best to use the same name for each function.  The 
-docstring of the ultimate callable will be taken from the final decorated 
-function.
+Details
+=======
+- When using the module directly as a decorator, every implementation of the 
+  function must have the same name and be defined in the same local scope.  If 
+  this is not possible (e.g. the implementations are in different modules), 
+  every function decorated with ``@signature_dispatch`` provides an 
+  ``overload()`` method that can be used to add implementations defined 
+  elsewhere::
+
+    >>> @signature_dispatch
+    ... def h(x):
+    ...    return x
+    ...
+    >>> @h.overload
+    ... def _(x, y):
+    ...    return x, y
+    ...
+    >>> h(1)
+    1
+    >>> h(1, 2)
+    (1, 2)
+
+- The docstring will be taken from the first decorated function.  All other 
+  docstrings will be ignored.
+
+- It's possible to use ``@signature_dispatch`` with class/static methods, but 
+  doing so is a bit of a special case.  Basically, the class/static method must 
+  be applied after all of the overloaded implementations have been defined::
+
+    >>> class C:
+    ...
+    ...     @signature_dispatch
+    ...     def m(cls, x):
+    ...         return cls, x
+    ...
+    ...     @signature_dispatch
+    ...     def m(cls, x, y):
+    ...         return cls, x, y
+    ...
+    ...     m = classmethod(m)
+    ...
+    >>> obj = C()
+    >>> obj.m(1)
+    (<class '__main__.C'>, 1)
+    >>> obj.m(1, 2)
+    (<class '__main__.C'>, 1, 2)
+
+  Let me know if you find this too annoying.  It would probably be possible to 
+  special-case class/static methods so that you could just apply both 
+  decorators to all the same functions, but that could be complicated and this 
+  work-around seems fine for now.
 
 Applications
 ============
-Writing decorators that can *optionally* be given arguments is tricky to get 
-right, but ``signature_dispatch`` makes it easy.  For example, here is a 
+Writing decorators that can *optionally* be given arguments is `tricky to get 
+right`__, but ``signature_dispatch`` makes it easy.  For example, here is a 
 decorator that prints a message to the terminal every time a function is called 
 and optionally accepts an extra message to print::
 
-  >>> def log(*args, **kwargs):
-  ...     import signature_dispatch
-  ...     from functools import wraps, partial
-  ...
-  ...     dispatch = signature_dispatch()
-  ...
-  ...     @dispatch
-  ...     def decorator(*, msg):
-  ...         return partial(wrap, msg=msg)
-  ...
-  ...     @dispatch
+  >>> import signature_dispatch, functools
+  >>> from typing import Optional
+
+  >>> @signature_dispatch
+  ... def log(msg: Optional[str]=None):
   ...     def decorator(f):
-  ...         return wrap(f)
-  ...
-  ...     def wrap(f, msg=None):
-  ...
-  ...         @wraps(f)
+  ...         @functools.wraps(f)
   ...         def wrapper(*args, **kwargs):
-  ...             print(f.__name__)
+  ...             print("Calling:", f.__name__)
   ...             if msg: print(msg)
-  ...             return f()
-  ...
+  ...             return f(*args, **kwargs)
   ...         return wrapper
+  ...     return decorator
   ...
-  ...     return decorator(*args, **kwargs)
+  >>> @signature_dispatch
+  ... def log(f):
+  ...     return log()(f)
+
+__ https://stackoverflow.com/questions/653368/how-to-create-a-python-decorator-that-can-be-used-either-with-or-without-paramet
 
 Using ``@log`` without an argument::
 
@@ -150,15 +191,15 @@ Using ``@log`` without an argument::
   ... def foo():
   ...     pass
   >>> foo()
-  foo
+  Calling: foo
 
 Using ``@log`` with an argument::
 
-  >>> @log(msg="Hello world!")
+  >>> @log("Hello world!")
   ... def bar():
   ...     pass
   >>> bar()
-  bar
+  Calling: bar
   Hello world!
 
 Alternatives
@@ -166,8 +207,11 @@ Alternatives
 The dispatching_ library does almost the same thing as this one, with a few 
 small differences:
 
-- The API is slightly more verbose.
+- More boilerplate.
 - Subscripted generic types (e.g. ``List[int]``) are not supported.
 - Annotations can be arbitrary functions.
 
 .. _dispatching: https://github.com/Lucretiel/Dispatch
+
+PEP 3124 proposes to add something similar to ``@signature_dispatch`` to the 
+python standard library, but appears to have been stalled for over a decade.

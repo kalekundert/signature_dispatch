@@ -4,12 +4,12 @@ import signature_dispatch
 import pytest
 
 def test_positional_only():
-    d = signature_dispatch()
 
-    @d
+    @signature_dispatch
     def f(a, /):
         return a
-    @d
+
+    @signature_dispatch
     def f(a, b, /):
         return a, b
 
