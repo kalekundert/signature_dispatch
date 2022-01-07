@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import sys, re
 
 def pytest_ignore_collect(path, config):

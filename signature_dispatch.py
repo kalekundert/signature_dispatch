@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 Execute the first function that matches the given arguments.
 

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import signature_dispatch as sd, pytest
 from typing import List, Callable
 
