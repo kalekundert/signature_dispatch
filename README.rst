@@ -244,14 +244,22 @@ Using ``@log`` with an argument::
 
 Alternatives
 ============
-The dispatching_ library does almost the same thing as this one, with a few 
-small differences:
+After having written this library, I subsequently found several existing 
+libraries that (although it pains me to admit) do a better job of the same 
+task.
 
-- More boilerplate.
-- Subscripted generic types (e.g. ``List[int]``) are not supported.
-- Annotations can be arbitrary functions.
+For multiple dispatch in general:
+
+- plum_
+
+- multimethod_
+
+For the specific task of making decorators:
+
+- decopatch_
 
 .. _dispatching: https://github.com/Lucretiel/Dispatch
-
-PEP 3124 proposes to add something similar to ``@signature_dispatch`` to the 
-python standard library, but appears to have been stalled for over a decade.
+.. _overloading: https://github.com/bintoro/overloading.py
+.. _plum: https://github.com/wesselb/plum
+.. _decopatch: https://smarie.github.io/python-decopatch/
+.. _multimethod: https://github.com/coady/multimethod
