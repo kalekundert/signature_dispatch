@@ -175,16 +175,16 @@ Details
   decorators to all the same functions, but that could be complicated and this 
   work-around seems fine for now.
 
-- Calling `@signature_dispatch` may be more expensive than you think, because 
+- Calling ``@signature_dispatch`` may be more expensive than you think, because 
   it has to find the scope that it was called from.  This is fast enough that 
   it shouldn't matter in most practical settings, but it does mean that you 
   should take care to not write your code in such a way that, e.g., the 
-  `@signature_dispatch` decorator is called every time the function is invoked.  
-  Instead, decorate your functions once and then call the resulting function as 
-  often as you'd like.
+  ``@signature_dispatch`` decorator is called every time the function is 
+  invoked.  Instead, decorate your functions once and then call the resulting 
+  function as often as you'd like.
 
 - You can get direct access to the core dispatching functionality provided by 
-  this library via the `signature_dispatch.dispatch()` function.  This will 
+  this library via the ``signature_dispatch.dispatch()`` function.  This will 
   allow you to call one of several functions based on a given set of arguments, 
   without the need to use any decorators::
 
