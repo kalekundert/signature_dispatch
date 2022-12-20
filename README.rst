@@ -13,8 +13,7 @@ based on their call signature and type annotations.
    :alt: Python version
    :target: https://pypi.python.org/pypi/signature_dispatch
 
-.. image::
-   https://img.shields.io/github/workflow/status/kalekundert/signature_dispatch/Test%20and%20release/master
+.. image:: https://img.shields.io/github/actions/workflow/status/kalekundert/signature_dispatch/test_and_release.yml?branch=master
    :alt: Test status
    :target: https://github.com/kalekundert/signature_dispatch/actions
 
