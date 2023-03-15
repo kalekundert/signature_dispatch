@@ -36,7 +36,7 @@ from functools import update_wrapper
 from typeguard import check_type, TypeCheckError
 from typing import Dict, Tuple
 
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 
 def dispatch(candidates, args, kwargs):
     """
