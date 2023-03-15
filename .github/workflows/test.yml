@@ -7,14 +7,11 @@ on:
 jobs:
   test:
     name: Test
-
-    # This version of Ubuntu is required for testing with python 3.6:
-    # https://github.com/actions/setup-python/issues/355
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9, '3.10', 3.11]
+        python-version: [3.7, 3.8, 3.9, '3.10', 3.11]
 
     steps:
       - uses: actions/checkout@v2
