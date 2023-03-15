@@ -333,32 +333,36 @@ def test_error_message():
 def test_error_message_annotation():
 
     @sd
-    def f(a: int):
+    def f(a, b: int):
         return a
 
     @sd
-    def f(a: List[int]):
+    def f(a, b: List[int]):
         return a
 
     with pytest.raises(TypeError) as err:
-        f('a')
+        f(1, 'B')
 
     assert err.match(r"(?m)can't dispatch the given arguments to any of the candidate functions:")
-    assert err.match(r"(?m)arguments: 'a'$")
+    assert err.match(r"(?m)arguments: 1, 'B'$")
     assert err.match(r"(?m)candidates:$")
-    assert err.match(r"(?m)\(a: ?int\): type of a must be int; got str instead$")
-    assert err.match(r"(?m)\(a: ?List\[int\]\): type of a must be a list; got str instead$")
+    assert err.match(r"(?m)\(a, b: ?int\): b: str is not an instance of int$")
+    assert err.match(r"(?m)\(a, b: ?List\[int\]\): b: str is not a list$")
 
     with pytest.raises(TypeError) as err:
-        f(['a'])
+        f(1, ['B'])
 
     assert err.match(r"(?m)can't dispatch the given arguments to any of the candidate functions:")
-    assert err.match(r"(?m)arguments: \['a'\]$")
+    assert err.match(r"(?m)arguments: 1, \['B'\]$")
     assert err.match(r"(?m)candidates:$")
-    assert err.match(r"(?m)\(a: ?int\): type of a must be int; got list instead$")
-    assert err.match(r"(?m)\(a: ?List\[int\]\): type of a\[0\] must be int; got str instead$")
+    assert err.match(r"(?m)\(a, b: ?int\): b: list is not an instance of int$")
+    assert err.match(r"(?m)\(a, b: ?List\[int\]\): b: item 0 of list is not an instance of int$")
 
 def test_function_raises_type_error():
+    # This test was relevant when `typeguard` raised a `TypeError` when a type 
+    # check failed.  Now it raises `typeguard.TypeCheckError`, so there isn't 
+    # really any risk of confusion.  That said, I didn't think there was any 
+    # compelling reason to delete this test.
 
     @sd
     def f(a):
