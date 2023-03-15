@@ -10,7 +10,7 @@ home-page = 'https://github.com/kalekundert/signature_dispatch'
 description-file = 'README.rst'
 requires-python = "~=3.6"
 requires = [
-  'typeguard',
+  'typeguard~=3.0',
 ]
 classifiers = [
   'Programming Language :: Python :: 3',

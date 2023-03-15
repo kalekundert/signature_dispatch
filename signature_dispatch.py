@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 Execute the first function that matches the given arguments.
 
@@ -35,7 +33,7 @@ candidates:
 
 import sys, inspect
 from functools import update_wrapper
-from typeguard import check_type
+from typeguard import check_type, TypeCheckError
 from typing import Dict, Tuple
 
 __version__ = '1.0.0'
@@ -60,14 +58,14 @@ def dispatch(candidates, args, kwargs):
 
         try:
             _check_type_annotations(bound_args)
-        except TypeError as err:
-            errors.append(f"{sig}: {err}")
+        except TypeCheckError as err:
+            errors.append(f"{sig}: {err.name}: {err}")
             continue
 
         break
 
     else:
-        arg_reprs = map(repr, args)
+        arg_reprs = (f'{v!r}' for v in args)
         kwargs_reprs = (f'{k}={v!r}' for k, v in kwargs.items())
         arg_repr = ', '.join([*arg_reprs, *kwargs_reprs])
         raise TypeError("\n".join([
@@ -166,7 +164,11 @@ def _check_type_annotations(bound_args):
         else:
             expected_type = param.annotation
 
-        check_type(name, value, expected_type)
+        try:
+            check_type(value, expected_type)
+        except TypeCheckError as err:
+            err.name = name
+            raise
 
 
 # Hack to make the module directly usable as a decorator.  Only works for 
