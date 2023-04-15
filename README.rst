@@ -94,16 +94,16 @@ invoke::
   TypeError: can't dispatch the given arguments to any of the candidate functions:
   arguments: 'a'
   candidates:
-  (x: int): type of x must be int; got str instead
-  (x: List[int]): type of x must be a list; got str instead
+  (x: int): x: str is not an instance of int
+  (x: List[int]): x: str is not a list
   >>> f2(['a'])
   Traceback (most recent call last):
       ...
   TypeError: can't dispatch the given arguments to any of the candidate functions:
   arguments: ['a']
   candidates:
-  (x: int): type of x must be int; got list instead
-  (x: List[int]): type of x[0] must be int; got str instead
+  (x: int): x: list is not an instance of int
+  (x: List[int]): x: item 0 of list is not an instance of int
 
 Details
 =======
